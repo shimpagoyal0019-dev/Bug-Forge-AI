@@ -1,0 +1,137 @@
+/* ═══════════════════════════════════════════════════════════
+   BugForge AI — Theme System
+   Import this in index.js or App.jsx:
+   import "./theme.css";
+   ═══════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap');
+
+/* ── Dark theme (default) ─────────────────────────────────── */
+[data-theme="dark"], :root {
+  --bg:          #000000;
+  --surface:     #0a0a0a;
+  --raised:      #111111;
+  --overlay:     #161616;
+  --border:      #1e1e1e;
+  --border-hi:   #2e2e2e;
+  --border-focus:#ffffff;
+
+  --text-primary:   #ffffff;
+  --text-secondary: #c8c8c8;
+  --text-muted:     #707070;
+  --text-faint:     #383838;
+
+  --accent:      #ffffff;
+  --accent-dim:  rgba(255,255,255,0.06);
+  --accent-glow: rgba(255,255,255,0.03);
+
+  /* status colors */
+  --status-pending:     #555555;
+  --status-testing:     #888888;
+  --status-negotiating: #cccccc;
+  --status-locked:      #ffffff;
+  --status-released:    #ffffff;
+  --status-disputed:    #444444;
+
+  /* risk colors */
+  --risk-critical: #ffffff;
+  --risk-high:     #cccccc;
+  --risk-medium:   #888888;
+  --risk-low:      #555555;
+
+  /* input */
+  --inp-bg:      #050505;
+  --inp-border:  #1e1e1e;
+  --inp-text:    #d0d0d0;
+
+  /* scrollbar */
+  --scroll-thumb: #222222;
+  --scroll-track: transparent;
+
+  /* toast */
+  --toast-ok-left:  #ffffff;
+  --toast-err-left: #555555;
+
+  /* tag */
+  --tag-bg:   rgba(255,255,255,0.05);
+  --tag-text: #888888;
+  --tag-border: rgba(255,255,255,0.08);
+}
+
+/* ── Light theme ──────────────────────────────────────────── */
+[data-theme="light"] {
+  --bg:          #f5f5f3;
+  --surface:     #ffffff;
+  --raised:      #f8f8f7;
+  --overlay:     #f0f0ee;
+  --border:      #e4e4e0;
+  --border-hi:   #cecece;
+  --border-focus:#000000;
+
+  --text-primary:   #0a0a0a;
+  --text-secondary: #2a2a2a;
+  --text-muted:     #666666;
+  --text-faint:     #b0b0b0;
+
+  --accent:      #000000;
+  --accent-dim:  rgba(0,0,0,0.04);
+  --accent-glow: rgba(0,0,0,0.02);
+
+  --status-pending:     #aaaaaa;
+  --status-testing:     #666666;
+  --status-negotiating: #222222;
+  --status-locked:      #000000;
+  --status-released:    #000000;
+  --status-disputed:    #cccccc;
+
+  --risk-critical: #000000;
+  --risk-high:     #333333;
+  --risk-medium:   #666666;
+  --risk-low:      #aaaaaa;
+
+  --inp-bg:      #f8f8f7;
+  --inp-border:  #e0e0de;
+  --inp-text:    #1a1a1a;
+
+  --scroll-thumb: #d4d4d0;
+  --scroll-track: transparent;
+
+  --toast-ok-left:  #000000;
+  --toast-err-left: #888888;
+
+  --tag-bg:     rgba(0,0,0,0.04);
+  --tag-text:   #666666;
+  --tag-border: rgba(0,0,0,0.08);
+}
+
+/* ── Global resets ────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-secondary);
+  font-family: 'Space Mono', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+/* ── Scrollbar ────────────────────────────────────────────── */
+::-webkit-scrollbar       { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--scroll-track); }
+::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 2px; }
+
+/* ── Selection ────────────────────────────────────────────── */
+::selection {
+  background: rgba(128,128,128,0.2);
+}
+
+/* ── Transitions ──────────────────────────────────────────── */
+a, button, input, select, textarea {
+  transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease, opacity 0.12s ease;
+}

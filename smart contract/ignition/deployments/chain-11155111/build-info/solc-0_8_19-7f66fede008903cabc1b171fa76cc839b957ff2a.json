@@ -1,0 +1,39 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_19-7f66fede008903cabc1b171fa76cc839b957ff2a",
+  "solcVersion": "0.8.19",
+  "solcLongVersion": "0.8.19+commit.7dd6d404",
+  "userSourceNameMap": {
+    "contracts/BugForgeEscrow.sol": "project/contracts/BugForgeEscrow.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "paris",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode",
+            "evm.deployedBytecode",
+            "evm.methodIdentifiers",
+            "metadata"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/BugForgeEscrow.sol": {
+        "content": "// SPDX-License-Identifier: MIT\r\npragma solidity ^0.8.19;\r\n\r\ncontract BugForgeEscrow {\r\n\r\n    // ─── ENUMS ───────────────────────────────────────────\r\n    enum Status {\r\n        Pending,     // hacker submitted, waiting for org\r\n        Locked,      // org locked ETH in escrow\r\n        Released,    // verified, ETH sent to hacker\r\n        Disputed,    // hacker raised dispute\r\n        Refunded     // admin ruled in org's favour\r\n    }\r\n\r\n    // ─── STRUCTS ─────────────────────────────────────────\r\n    struct BountyReport {\r\n        uint256 id;\r\n        address payable hacker;\r\n        address payable organization;\r\n        uint256 amount;          // ETH locked in wei\r\n        uint256 minBounty;       // AI recommended minimum in wei\r\n        Status  status;\r\n        string  reportHash;      // IPFS hash of encrypted report\r\n        uint256 createdAt;\r\n        uint256 deadline;\r\n    }\r\n\r\n    // ─── STATE VARIABLES ─────────────────────────────────\r\n    address public admin;\r\n    uint256 public platformFeePercent = 2;\r\n    uint256 public reportCount;\r\n\r\n    mapping(uint256 => BountyReport) public reports;\r\n\r\n    // ─── EVENTS ──────────────────────────────────────────\r\n    event ReportCreated(\r\n        uint256 indexed id,\r\n        address indexed hacker,\r\n        uint256 minBounty\r\n    );\r\n\r\n    event BountyLocked(\r\n        uint256 indexed id,\r\n        address indexed organization,\r\n        uint256 amount\r\n    );\r\n\r\n    event BountyReleased(\r\n        uint256 indexed id,\r\n        address indexed hacker,\r\n        uint256 amount\r\n    );\r\n\r\n    event DisputeRaised(\r\n        uint256 indexed id,\r\n        address indexed hacker\r\n    );\r\n\r\n    event DisputeResolved(\r\n        uint256 indexed id,\r\n        bool hackerWon\r\n    );\r\n\r\n    // ─── MODIFIERS ───────────────────────────────────────\r\n    modifier onlyAdmin() {\r\n        require(msg.sender == admin, \"Only admin\");\r\n        _;\r\n    }\r\n\r\n    modifier onlyOrg(uint256 _id) {\r\n        require(\r\n            msg.sender == reports[_id].organization,\r\n            \"Only organization\"\r\n        );\r\n        _;\r\n    }\r\n\r\n    modifier onlyHacker(uint256 _id) {\r\n        require(\r\n            msg.sender == reports[_id].hacker,\r\n            \"Only hacker\"\r\n        );\r\n        _;\r\n    }\r\n\r\n    modifier reportExists(uint256 _id) {\r\n        require(\r\n            _id > 0 && _id <= reportCount,\r\n            \"Report does not exist\"\r\n        );\r\n        _;\r\n    }\r\n\r\n    // ─── CONSTRUCTOR ─────────────────────────────────────\r\n    constructor() {\r\n        admin = msg.sender;\r\n    }\r\n\r\n    // ─── FUNCTIONS ───────────────────────────────────────\r\n\r\n    /**\r\n     * @dev Step 1 — Hacker creates a report on-chain\r\n     * @param _minBounty  AI recommended minimum bounty in wei\r\n     * @param _reportHash IPFS hash of encrypted vulnerability report\r\n     */\r\n    function createReport(\r\n        uint256 _minBounty,\r\n        string memory _reportHash\r\n    ) external returns (uint256) {\r\n        reportCount++;\r\n\r\n        reports[reportCount] = BountyReport({\r\n            id:           reportCount,\r\n            hacker:       payable(msg.sender),\r\n            organization: payable(address(0)),\r\n            amount:       0,\r\n            minBounty:    _minBounty,\r\n            status:       Status.Pending,\r\n            reportHash:   _reportHash,\r\n            createdAt:    block.timestamp,\r\n            deadline:     0\r\n        });\r\n\r\n        emit ReportCreated(reportCount, msg.sender, _minBounty);\r\n        return reportCount;\r\n    }\r\n\r\n    /**\r\n     * @dev Step 2 — Org locks ETH into escrow\r\n     * @param _id      Report ID\r\n     * @param _deadline Unix timestamp deadline for verification\r\n     */\r\n    function lockBounty(\r\n        uint256 _id,\r\n        uint256 _deadline\r\n    ) external payable reportExists(_id) {\r\n        BountyReport storage r = reports[_id];\r\n\r\n        require(r.status == Status.Pending,       \"Report not pending\");\r\n        require(msg.value >= r.minBounty,          \"Below AI minimum bounty\");\r\n        require(_deadline > block.timestamp,       \"Invalid deadline\");\r\n        require(r.organization == address(0),      \"Already locked\");\r\n\r\n        r.organization = payable(msg.sender);\r\n        r.amount       = msg.value;\r\n        r.status       = Status.Locked;\r\n        r.deadline     = _deadline;\r\n\r\n        emit BountyLocked(_id, msg.sender, msg.value);\r\n    }\r\n\r\n    /**\r\n     * @dev Step 3 — Org verifies exploit → releases ETH to hacker\r\n     * @param _id Report ID\r\n     */\r\n    function verifyAndRelease(\r\n        uint256 _id\r\n    ) external reportExists(_id) onlyOrg(_id) {\r\n        BountyReport storage r = reports[_id];\r\n        require(r.status == Status.Locked, \"Not locked\");\r\n\r\n        r.status = Status.Released;\r\n\r\n        uint256 fee    = (r.amount * platformFeePercent) / 100;\r\n        uint256 payout = r.amount - fee;\r\n\r\n        r.hacker.transfer(payout);\r\n        payable(admin).transfer(fee);\r\n\r\n        emit BountyReleased(_id, r.hacker, payout);\r\n    }\r\n\r\n    /**\r\n     * @dev Hacker raises dispute if org misses deadline\r\n     * @param _id Report ID\r\n     */\r\n    function raiseDispute(\r\n        uint256 _id\r\n    ) external reportExists(_id) onlyHacker(_id) {\r\n        BountyReport storage r = reports[_id];\r\n        require(r.status == Status.Locked,        \"Not locked\");\r\n        require(block.timestamp > r.deadline,     \"Deadline not passed\");\r\n\r\n        r.status = Status.Disputed;\r\n        emit DisputeRaised(_id, msg.sender);\r\n    }\r\n\r\n    /**\r\n     * @dev Admin resolves dispute\r\n     * @param _id        Report ID\r\n     * @param _payHacker true = pay hacker | false = refund org\r\n     */\r\n    function resolveDispute(\r\n        uint256 _id,\r\n        bool _payHacker\r\n    ) external onlyAdmin reportExists(_id) {\r\n        BountyReport storage r = reports[_id];\r\n        require(r.status == Status.Disputed, \"Not disputed\");\r\n\r\n        if (_payHacker) {\r\n            r.status = Status.Released;\r\n            r.hacker.transfer(r.amount);\r\n            emit DisputeResolved(_id, true);\r\n        } else {\r\n            r.status = Status.Refunded;\r\n            r.organization.transfer(r.amount);\r\n            emit DisputeResolved(_id, false);\r\n        }\r\n    }\r\n\r\n    // ─── VIEW FUNCTIONS ──────────────────────────────────\r\n\r\n    function getReport(\r\n        uint256 _id\r\n    ) external view reportExists(_id) returns (BountyReport memory) {\r\n        return reports[_id];\r\n    }\r\n\r\n    function getContractBalance() external view returns (uint256) {\r\n        return address(this).balance;\r\n    }\r\n}"
+      }
+    }
+  }
+}
